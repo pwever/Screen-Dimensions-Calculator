@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>Screen calculator</title>
+	<script type="text/javascript" charset="utf-8" src="https://ajax.googleapis.com/ajax/libs/jquery/1.6.2/jquery.min.js"></script>
+	<!--[if !IE]><!-->
+	<script type="text/javascript" charset="utf-8" src="fraction.js"></script>
+	<script type="text/javascript" charset="utf-8">
+		$(document).ready(function(){
+			// fetch inputs and canvas DOM objects
+			var output = document.getElementById("canvas");
+			var inputs = { width: $('input#pixel_width')
+				, height: $('input#pixel_heigth')
+				, diagonal: $('input#diagonal')
+				, screen_ppi: $('input#screen_ppi')
+			}
+			
+			
+			// setup events
+			$('form#calculator input').keyup(function(){
+				recalculate(output, inputs);
+			});
+			$('#calculator input').mouseup(function(){
+				recalculate(output, inputs);
+			});
+			$('#change_orientation').click(function() {
+				var v = inputs.width.val();
+				inputs.width.val(inputs.height.val());
+				inputs.height.val(v);
+				recalculate(output, inputs);
+			});
+			$('#set_ppi').click(function() {
+				var reply = prompt("The screen resolution is "+screen.width+"\u00D7\n"+screen.height+". Enter the diagonal of this screen in inch.", "12");
+				if (reply) {
+					var px_w = parseInt(screen.width);
+					var px_h = parseInt(screen.height);
+					var angle = Math.atan(px_h/px_w);
+					var physical_w = Math.cos(angle) * parseFloat(reply);
+					var ppi = px_w / physical_w;
+					inputs.screen_ppi.val(ppi);
+					recalculate(output, inputs);
+					$('#set_ppi').val(parseFloat(reply).toFixed(2) + "in \u21D2" + ppi.toFixed(2) + "ppi");
+				}
+				
+			});
+			$(window).resize(function() {
+				recalculate(output, inputs);
+			});
+			
+			// initial draw
+			recalculate(output, inputs);
+		});
+		
+		
+		function recalculate(canvas, inputs) {
+			var padding = 5;
+			
+			var ratio
+				, aspect_ratio
+				, angle
+				, physical_w
+				, physical_h
+				, ppi
+				, print_scale;
+				
+			var px_w = parseInt(inputs.width.val());
+			var px_h = parseInt(inputs.height.val());
+			var diagonal_length = parseFloat(inputs.diagonal.val());
+			var display_scale = parseFloat(inputs.screen_ppi.val());
+			
+			if (px_w>=px_h) {
+				ratio = px_h/px_w;
+			} else {
+				ratio = px_w/px_h;
+			}
+			aspect_ratio = new Fraction(ratio);
+			angle = Math.atan(px_h/px_w);
+			physical_w = Math.cos(angle) * diagonal_length;
+			physical_h = Math.sin(angle) * diagonal_length;
+			ppi = px_w / physical_w;
+			print_scale = 72 / ppi;
+			
+			
+			
+			// Start drawing
+			canvas.width = $(window).width();
+			canvas.height = $(window).height();
+			var context = canvas.getContext("2d");
+			var ww = Math.max(px_w, physical_w*display_scale);
+			var hh = Math.max(px_h, physical_h*display_scale);
+			var ww_edge = Math.round((canvas.width-ww)/2);
+			var hh_edge = Math.round((canvas.height-hh)/2);
+			context.translate(ww_edge, hh_edge);
+			
+			// grid
+			var grid = 10;
+			ww_edge = Math.ceil(ww_edge/grid)*grid;
+			hh_edge = Math.ceil(hh_edge/grid)*grid;
+			context.font = "bold 12px sans-serif";
+			for (var x = -ww_edge + 0.5; x < canvas.width - ww_edge; x += grid) {
+			  context.moveTo(x, -hh_edge);
+			  context.lineTo(x, canvas.height - hh_edge);
+			}
+			for (var y = -hh_edge + 0.5; y < canvas.height - hh_edge; y += grid) {
+			  context.moveTo(-ww_edge, y);
+			  context.lineTo(canvas.width - ww_edge, y);
+			}
+			context.strokeStyle = "#eee";
+			context.stroke();
+			
+			// pixel screen
+			// rectangle
+			context.fillStyle = "rgba(0,0,0,0.25)";
+			context.fillRect(0, 0, px_w, px_h);
+			// diagonal
+			context.beginPath();
+			context.moveTo(px_w,0);
+			context.lineTo(0, px_h);
+			context.strokeStyle = "rgba(0,0,0,0.25)";
+			context.stroke();
+			
+			// draw angle
+			// arc
+			context.beginPath();
+			var radius = Math.min(px_w/2, 200);
+			context.moveTo(0, px_h);
+			context.lineTo(radius, px_h);
+			context.arc(0, px_h, radius, 0, -angle, true);
+			context.closePath();
+			context.fillStyle = "rgba(255,255,255,0.25)";
+			context.fill();
+			
+			// labels
+			draw_label(context
+				, (angle * 180/Math.PI).toFixed(2) + "\u00B0"
+				, radius*0.75*Math.cos(angle)
+				, px_h-radius/2*Math.sin(angle)*0.6
+				, "#000", "center", "middle"
+			); // angle
+			
+			draw_label(context
+				, aspect_ratio.numerator + " \u00D7 " + aspect_ratio.denominator
+				, px_w/2
+				, px_h/2
+				, "#000", "center", "bottom"
+			); // aspect ratio
+			
+			draw_label(context
+				, "Print at "+(print_scale*100).toFixed(2)+"%"
+				, px_w/2
+				, px_h/2
+				, "#000", "center", "top"
+			);  // print scale
+			
+			draw_label(context
+				, px_h + "px"
+				, px_w - padding
+				, px_h/2
+				, "#000", "right", "middle"
+			); // pixel height
+			
+			draw_label(context
+				, px_w + "px"
+				, px_w/2
+				, px_h - padding
+				, "#000", "center", "bottom"
+			); // pixel width
+			
+			draw_label(context
+				, "pixel"
+				, px_w - padding
+				, px_h - padding
+				, "#000", "right", "bottom"
+			); // pixel rect label
+			
+			
+			// physical dimensions
+			// rectangle
+			context.beginPath();
+			context.fillStyle = "rgba(0,0,0,0.25)";
+			context.fillRect(0,0,Math.round(physical_w*display_scale),Math.round(physical_h*display_scale));
+			// diagonal
+			context.beginPath();
+			context.moveTo(Math.round(physical_w*display_scale), 0);
+			context.lineTo(0, Math.round(physical_h*display_scale));
+			context.strokeStyle = "rgba(255,255,255,0.25)";
+			context.stroke();
+			
+			// labels
+			draw_label(context
+				, diagonal_length+"in"
+				, physical_w * display_scale / 2
+				, physical_h * display_scale / 2
+				, "#FFF", "center", "bottom"
+			); // diagonal length
+			
+			draw_label(context
+				, ppi.toFixed(2) + "ppi"
+				, physical_w * display_scale / 2
+				, physical_h * display_scale / 2
+				, "#FFF", "center", "top"
+			); // ppi
+			
+			draw_label(context
+				, physical_h.toFixed(2)+"in"
+				, physical_w * display_scale - padding
+				, physical_h/2 * display_scale
+				, "#FFF", "right", "middle"
+			); // phisical height
+			
+			draw_label(context
+				, physical_h.toFixed(2)+"in"
+				, physical_w/2 * display_scale
+				, physical_h * display_scale - padding
+				, "#FFF", "center", "bottom"
+			); // phisical width
+			
+			draw_label(context
+				, "physical"
+				, physical_w * display_scale - padding
+				, physical_h * display_scale - padding
+				, "#FFF", "right", "bottom"
+			); // corner label
+		};
+		function draw_label(context, str, x, y, color, halign, valign) {
+			context.fillStyle = color;
+			context.textAlign = halign;
+			context.textBaseline = valign;
+			context.fillText(str, x, y);
+		}
+	</script>
+	<!--><![endif]-->
+	<style type="text/css" media="screen">
+		body {
+			padding: 1em;
+		}
+		form {
+			position: absolute;
+			padding: 0.5em;
+			background-color: white;
+			color: gray;
+			font-family: Helvetica, sans-serif;
+			border: 1px solid #CCC;
+			-webkit-border-radius: 4px;
+			-moz-border-radius: 4px;
+			border-radius: 4px;
+		}
+		form div.top {
+			padding-bottom: 0.5em;
+			border-bottom: 1px solid #CCC;
+			margin-bottom: 0.5em;
+		}
+		form input[type=text], form input[type=number] {
+			width: 4em;
+			padding: 0.5em;
+			background-color: white;
+			border: 1px solid #CCC;
+		}
+		#calculator label {
+			font-size: 0.8em;
+			padding: 0.5em 0;
+		}
+		canvas#canvas {
+			position: fixed;
+			top: 0;
+			left: 0;
+			z-index: -1;
+		}
+	</style>
+</head>
+<body>
+	<form id="calculator">
+		<noscript><p style="color:red">This calculator requires javascript. Please enable it in your browser.</p><br></noscript>
+		<!--[if IE]><p style="color:red">Unfortunately this won't work on Internet Explorer, because of a lack of HTML5 support.</p><br><![endif]-->
+		
+		<div class="top">
+			<input type="number" min="0.1" name="diagonal" step="0.1" value="6.5" id="diagonal" tabindex="1" autofocus><label for="diagonal">in screen</label>
+			<label for="pixel_width">with </label><input type="text" name="pixel_width" step="1" value="800" id="pixel_width" tabindex="2">
+			<input type="button" name="change_orientation" value="&harr;" id="change_orientation">
+			<input type="text" name="pixel_heigth" step="1" value="600" id="pixel_heigth" tabindex="3"> <label for="pixel_height">px</label>
+		</div>
+		<div>
+			<label for="set_ppi">Set this screen's diagonal</label>
+			<input type="button" name="set_ppi" value="default: 96ppi" id="set_ppi">
+			<input type="text" hidden name="screen_ppi" step="0.5" value="96" id="screen_ppi" taborder="4">
+		</div>
+	</form>
+	<canvas id="canvas"></canvas>
+	
+</body>
+</html>
