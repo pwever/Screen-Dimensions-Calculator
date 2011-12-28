@@ -1,6 +1,6 @@
 # ScreenCalculator
 
-![](Screenshot.png)
+![](http://www.knittingpixel.com/projects/screencalculator-screengrab.png)
 
 ## Introduction
 
