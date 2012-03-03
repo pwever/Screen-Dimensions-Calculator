@@ -1,6 +1,6 @@
 # ScreenCalculator
 
-![](http://www.knittingpixel.com/projects/screencalculator-screengrab.png)
+![](https://lh4.googleusercontent.com/-zi1h8mBbMKs/T1Gee7RbhrI/AAAAAAAADBg/YcLXuec5tEs/s640/ScreenCalculator-grab1.png)
 
 ## Introduction
 
