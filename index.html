@@ -15,7 +15,6 @@
 				, screen_ppi: $('input#screen_ppi')
 			}
 			
-			
 			// setup events
 			$('form#calculator input').keyup(function(){
 				recalculate(output, inputs);
@@ -46,12 +45,25 @@
 			$(window).resize(function() {
 				recalculate(output, inputs);
 			});
+
+			// check the location hash for values
+			if (window.location.hash!=null) {
+				var hash_input = window.location.hash.match(/d([\d\.]+)w(\d+)h(\d+)/i);
+				inputs.diagonal.val(parseFloat(hash_input[1]));
+				inputs.width.val(parseInt(hash_input[2]));
+				inputs.height.val(parseInt(hash_input[3]));
+			}
 			
 			// initial draw
 			recalculate(output, inputs);
 		});
+
+		function write_location_hash(evt) {
+
+		}
 		
-		
+
+		var hash_string_timer;
 		function recalculate(canvas, inputs) {
 			var padding = 5;
 			
@@ -67,6 +79,13 @@
 			var px_h = parseInt(inputs.height.val());
 			var diagonal_length = parseFloat(inputs.diagonal.val());
 			var display_scale = parseFloat(inputs.screen_ppi.val());
+
+			// write location.hash
+			var hash_string = "d" + diagonal_length + "w" + px_w + "h" + px_h;
+			if (hash_string_timer) {
+				clearTimeout(hash_string_timer);
+			}
+			hash_string_timer = setTimeout(function() { window.location.hash = hash_string; }, 2000);
 			
 			if (px_w>=px_h) {
 				ratio = px_h/px_w;
